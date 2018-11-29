@@ -2,14 +2,14 @@ PROJECT_NAME     := weighty
 TARGETS          := nrf52832_xxaa
 OUTPUT_DIRECTORY := _build
 
-SDK_ROOT := ~/nRF5_SDK_15.2.0_9412b96
+SDK_ROOT := /home/droid/nRF5_SDK_15.2.0_9412b96
 PROJ_DIR := .
 
 OPENOCD := /usr/local/
-SOFTDEVICE := ~/nRF5_SDK_15.2.0_9412b96/components/softdevice/s132/hex/s132_nrf52_6.1.0_softdevice.hex
+SOFTDEVICE := /home/droid/nRF5_SDK_15.2.0_9412b96/components/softdevice/s132/hex/s132_nrf52_6.1.0_softdevice.hex
 
 $(OUTPUT_DIRECTORY)/nrf52832_xxaa.out: \
-  LINKER_SCRIPT  := ble_app_gcc_nrf52.ld.ld
+  LINKER_SCRIPT  := ble_app_gcc_nrf52.ld
 
 # Source files common to all targets
 SRC_FILES += \
@@ -55,7 +55,7 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_uarte.c \
   $(SDK_ROOT)/components/libraries/bsp/bsp.c \
   $(SDK_ROOT)/components/libraries/bsp/bsp_btn_ble.c \
-  $(PROJ_DIR)/our_service.c \
+  $(PROJ_DIR)/weight_service.c \
   $(PROJ_DIR)/hx711.c \
   $(PROJ_DIR)/main.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \

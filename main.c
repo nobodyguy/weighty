@@ -37,9 +37,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-
-#include "our_service.h"
-
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
@@ -70,11 +67,11 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
-#include "our_service.h"
+#include "weight_service.h"
 #include "hx711.h"
 
 
-#define DEVICE_NAME                     "Weighty"                       		/**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "Weighty"                               /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME               "NordicSemiconductor"                   /**< Manufacturer. Will be passed to Device Information Service. */
 #define APP_ADV_INTERVAL                300                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
 
@@ -109,17 +106,16 @@ BLE_ADVERTISING_DEF(m_advertising);                                             
 
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
 
-// FROM_SERVICE_TUTORIAL: Declare a service structure for our application
-ble_os_t m_our_service;
+ble_os_t m_weight_service;
 
 
-// OUR_JOB: Step 3.G, Declare an app_timer id variable and define our timer interval and define a timer interval
-APP_TIMER_DEF(m_our_char_timer_id);
+// Timer for sending the weight notification
+APP_TIMER_DEF(m_weight_char_timer_id);
 #define OUR_CHAR_TIMER_INTERVAL APP_TIMER_TICKS(1000) //1000 ms intervals
 
 
 
-// Use UUIDs for service(s) used in your application.
+// Custom service UUIDs
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
 {
     {BLE_UUID_OUR_SERVICE_UUID, BLE_UUID_TYPE_VENDOR_BEGIN}
@@ -150,8 +146,6 @@ static bool weight_changed = false;
 
 void hx711_callback(hx711_evt_t evt, int value)
 {
-    //uint16_t length = sizeof(int);
-    
     if(evt == DATA_READY)
     {
         /* Transmit received sensor data over BLE - ignoring return value. Packets will be dropped
@@ -161,9 +155,9 @@ void hx711_callback(hx711_evt_t evt, int value)
          -  TX buffer is full*/
         if (value != weight)
         {
-			weight = value;
-			weight_changed = true;
-		}
+            weight = value;
+            weight_changed = true;
+        }
         NRF_LOG_INFO("ADC measuremement %d", value);
     }
     else
@@ -180,13 +174,11 @@ void hx711_callback(hx711_evt_t evt, int value)
 // ALREADY_DONE_FOR_YOU: This is a timer event handler
 static void timer_timeout_handler(void * p_context)
 {
-	// Check if current temperature is different from last temperature
-	if(weight_changed)
-	{
-	  // If new temperature then send notification
-	  our_temperature_characteristic_update(&m_our_service, &weight);
-	  weight_changed = false;
-	}
+    if(weight_changed)
+    {
+        weight_characteristic_update(&m_weight_service, &weight);
+        weight_changed = false;
+    }
 }
 
 
@@ -258,19 +250,16 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
 
         case PM_EVT_PEER_DELETE_FAILED:
         {
-            // Assert.
             APP_ERROR_CHECK(p_evt->params.peer_delete_failed.error);
         } break;
 
         case PM_EVT_PEERS_DELETE_FAILED:
         {
-            // Assert.
             APP_ERROR_CHECK(p_evt->params.peers_delete_failed_evt.error);
         } break;
 
         case PM_EVT_ERROR_UNEXPECTED:
         {
-            // Assert.
             APP_ERROR_CHECK(p_evt->params.error_unexpected.error);
         } break;
 
@@ -299,9 +288,7 @@ static void timers_init(void)
     ret_code_t err_code = app_timer_init();
     APP_ERROR_CHECK(err_code);
 
-
-    // OUR_JOB: Step 3.H, Initiate our timer
-    app_timer_create(&m_our_char_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler);
+    app_timer_create(&m_weight_char_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler);
 
 }
 
@@ -363,9 +350,7 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
  */
 static void services_init(void)
 {
-
-	
-		uint32_t         err_code;
+    uint32_t         err_code;
     nrf_ble_qwr_init_t qwr_init = {0};
 
     // Initialize Queued Write Module.
@@ -374,9 +359,7 @@ static void services_init(void)
     err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init);
     APP_ERROR_CHECK(err_code);
 
-    //FROM_SERVICE_TUTORIAL: Add code to initialize the services used by the application.
-    our_service_init(&m_our_service);
-
+    weight_service_init(&m_weight_service);
 }
 
 
@@ -432,18 +415,6 @@ static void conn_params_init(void)
 
     err_code = ble_conn_params_init(&cp_init);
     APP_ERROR_CHECK(err_code);
-}
-
-
-/**@brief Function for starting timers.
- */
-static void application_timers_start(void)
-{
-
-    // OUR_JOB: Step 3.I, Start our timer
-    //app_timer_start(m_our_char_timer_id, OUR_CHAR_TIMER_INTERVAL, NULL);
-    
-    //To update temperature only when in a connection then don't call app_timer_start() here, but in ble_event_handler()
 }
 
 
@@ -504,17 +475,17 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
 static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 {
     ret_code_t err_code = NRF_SUCCESS;
-		
+        
 
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected.");
-            err_code = app_timer_stop(m_our_char_timer_id);
+            err_code = app_timer_stop(m_weight_char_timer_id);
             APP_ERROR_CHECK(err_code);
             hx711_stop();
-			hx711_power_down();
-			
+            hx711_power_down();
+            
             break;
 
         case BLE_GAP_EVT_CONNECTED:
@@ -525,10 +496,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
 
-            //When connected; start our timer to start regular temperature measurements
+            //When connected; start our timer to start regular weight measurements
             hx711_start(false);
-            err_code = app_timer_start(m_our_char_timer_id, OUR_CHAR_TIMER_INTERVAL, NULL);
-			APP_ERROR_CHECK(err_code);
+            err_code = app_timer_start(m_weight_char_timer_id, OUR_CHAR_TIMER_INTERVAL, NULL);
+            APP_ERROR_CHECK(err_code);
             break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
@@ -564,7 +535,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             break;
     }
 
-		
+        
 }
 
 
@@ -592,12 +563,8 @@ static void ble_stack_init(void)
     // Register a handler for BLE events.
     NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
 
-    //OUR_JOB: Step 3.C Set up a BLE event observer to call ble_our_service_on_ble_evt() to do housekeeping of ble connections related to our service and characteristics.
-    NRF_SDH_BLE_OBSERVER(m_our_service_observer, APP_BLE_OBSERVER_PRIO, ble_our_service_on_ble_evt, (void*) &m_our_service);
-	
-		
-
-	
+    // Set up a BLE event observer to call ble_weight_service_on_ble_evt() to do housekeeping of ble connections related to our service and characteristics.
+    NRF_SDH_BLE_OBSERVER(m_weight_service_observer, APP_BLE_OBSERVER_PRIO, ble_weight_service_on_ble_evt, (void*) &m_weight_service);
 }
 
 
@@ -701,11 +668,9 @@ static void advertising_init(void)
     init.advdata.include_appearance      = true;
     init.advdata.flags                   = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
 
-	
-		init.srdata.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
-		init.srdata.uuids_complete.p_uuids = m_adv_uuids;
-		
-	
+    init.srdata.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
+    init.srdata.uuids_complete.p_uuids = m_adv_uuids;
+        
     init.config.ble_adv_fast_enabled  = true;
     init.config.ble_adv_fast_interval = APP_ADV_INTERVAL;
     init.config.ble_adv_fast_timeout  = APP_ADV_DURATION;
@@ -796,7 +761,6 @@ int main(void)
 {
     bool erase_bonds;
 
-    // Initialize.
     log_init();
     timers_init();
     buttons_leds_init(&erase_bonds);
@@ -804,30 +768,17 @@ int main(void)
     ble_stack_init();
     gap_params_init();
     gatt_init();
-	hx711_init(INPUT_CH_A_128, hx711_callback);
-	  services_init();
-		advertising_init();
-
-
+    hx711_init(INPUT_CH_A_128, hx711_callback);
+    services_init();
+    advertising_init();
 
     conn_params_init();
     peer_manager_init();
 
-    // Start execution.
-    NRF_LOG_INFO("OurCharacteristics tutorial started.");
-    application_timers_start();
+    advertising_start(erase_bonds); 
 
-    advertising_start(erase_bonds);
-    
-
-    // Enter main loop.
     for (;;)
     {
         idle_state_handle();
     }
 }
-
-
-/**
- * @}
- */
