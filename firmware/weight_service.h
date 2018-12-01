@@ -6,11 +6,11 @@
 #include "ble_srv_common.h"
 
 // Defining 16-bit service and 128-bit base UUIDs
-#define BLE_UUID_OUR_BASE_UUID              {{ 0x23, 0xD1, 0x13, 0xEF, 0x5F, 0x78, 0x23, 0x15, 0xDE, 0xEF, 0x12, 0x12, 0x00, 0x00, 0x00, 0x00 }} // 128-bit base UUID
-#define BLE_UUID_OUR_SERVICE_UUID           0xF00D // Just a random, but recognizable value
+#define BLE_UUID_WEIGHTY_BASE_UUID          {{0x23, 0xD1, 0x13, 0xEF, 0x5F, 0x78, 0x23, 0x15, 0xDE, 0xEF, 0x12, 0x12, 0x00, 0x00, 0x00, 0x00}} // 128-bit base UUID
+#define BLE_UUID_WEIGHT_SERVICE_UUID        0xF00D // Just a random, but recognizable value
 
 // Defining 16-bit characteristic UUID
-#define BLE_UUID_OUR_CHARACTERISTC_UUID     0xBEEF // Just a random, but recognizable value
+#define BLE_UUID_WEIGHT_CHARACTERISTC_UUID  0xBEEF // Just a random, but recognizable value
 
 // This structure contains various status information for our service. 
 typedef struct

@@ -307,6 +307,7 @@ CFLAGS += -DS132
 CFLAGS += -DBLE_STACK_SUPPORT_REQD
 CFLAGS += -DNRF_SD_BLE_API_VERSION=6
 CFLAGS += -DSOFTDEVICE_PRESENT
+#CFLAGS += -O0 -ggdb
 
 # C++ flags common to all targets
 CXXFLAGS += \
@@ -369,7 +370,7 @@ flash: $(OUTPUT_DIRECTORY)/nrf52832_xxaa.hex
             -c init \
             -c "reset init" \
             -c halt \
-            -c "flash write_image $<" \
+            -c "program $< verify" \
             -c reset \
             -c exit
 
@@ -380,7 +381,7 @@ flash_softdevice:
             -c init \
             -c "reset init" \
             -c halt \
-            -c "flash write_image $(SOFTDEVICE)" \
+            -c "program $(SOFTDEVICE) verify" \
             -c reset \
             -c exit
 

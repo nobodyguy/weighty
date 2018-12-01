@@ -34,8 +34,8 @@ static uint32_t weight_char_add(ble_os_t * p_weight_service)
     // Add a custom characteristic UUID
     uint32_t            err_code;
     ble_uuid_t          char_uuid;
-    ble_uuid128_t       base_uuid = BLE_UUID_OUR_BASE_UUID;
-    char_uuid.uuid      = BLE_UUID_OUR_CHARACTERISTC_UUID;
+    ble_uuid128_t       base_uuid = BLE_UUID_WEIGHTY_BASE_UUID;
+    char_uuid.uuid      = BLE_UUID_WEIGHT_CHARACTERISTC_UUID;
     err_code = sd_ble_uuid_vs_add(&base_uuid, &char_uuid.type);
     APP_ERROR_CHECK(err_code);  
     
@@ -43,7 +43,7 @@ static uint32_t weight_char_add(ble_os_t * p_weight_service)
     ble_gatts_char_md_t char_md;
     memset(&char_md, 0, sizeof(char_md));
     char_md.char_props.read = 1;
-    char_md.char_props.write = 1;
+    char_md.char_props.write = 0;
 
     // Configuring Client Characteristic Configuration Descriptor metadata and add to char_md structure
     ble_gatts_attr_md_t cccd_md;
@@ -59,10 +59,9 @@ static uint32_t weight_char_add(ble_os_t * p_weight_service)
     memset(&attr_md, 0, sizeof(attr_md));  
     attr_md.vloc        = BLE_GATTS_VLOC_STACK;
     
-    
     // Set read/write security levels to our characteristic
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&attr_md.write_perm);
     
     // Configure the characteristic value attribute
     ble_gatts_attr_t    attr_char_value;
@@ -73,7 +72,7 @@ static uint32_t weight_char_add(ble_os_t * p_weight_service)
     // Set characteristic length in number of bytes
     attr_char_value.max_len     = 4;
     attr_char_value.init_len    = 4;
-    uint8_t value[4]            = { 0x12,0x34,0x56,0x78 };
+    uint8_t value[4]            = {0x12,0x34,0x56,0x78};
     attr_char_value.p_value     = value;
 
     // Add our new characteristic to the service
@@ -81,6 +80,7 @@ static uint32_t weight_char_add(ble_os_t * p_weight_service)
                                &char_md,
                                &attr_char_value,
                                &p_weight_service->char_handles);
+                               
     APP_ERROR_CHECK(err_code);
     return NRF_SUCCESS;
 }
@@ -97,8 +97,8 @@ void weight_service_init(ble_os_t * p_weight_service)
 
     // Declare 16-bit service and 128-bit base UUIDs and add them to the BLE stack
     ble_uuid_t        service_uuid;
-    ble_uuid128_t     base_uuid = BLE_UUID_OUR_BASE_UUID;
-    service_uuid.uuid = BLE_UUID_OUR_SERVICE_UUID;
+    ble_uuid128_t     base_uuid = BLE_UUID_WEIGHTY_BASE_UUID;
+    service_uuid.uuid = BLE_UUID_WEIGHT_SERVICE_UUID;
     err_code = sd_ble_uuid_vs_add(&base_uuid, &service_uuid.type);
     APP_ERROR_CHECK(err_code);    
     

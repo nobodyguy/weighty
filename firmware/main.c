@@ -111,14 +111,14 @@ ble_os_t m_weight_service;
 
 // Timer for sending the weight notification
 APP_TIMER_DEF(m_weight_char_timer_id);
-#define OUR_CHAR_TIMER_INTERVAL APP_TIMER_TICKS(1000) //1000 ms intervals
+#define WEIGHT_CHAR_TIMER_INTERVAL APP_TIMER_TICKS(1000) //1000 ms intervals
 
 
 
 // Custom service UUIDs
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
 {
-    {BLE_UUID_OUR_SERVICE_UUID, BLE_UUID_TYPE_VENDOR_BEGIN}
+    {BLE_UUID_WEIGHT_SERVICE_UUID, BLE_UUID_TYPE_VENDOR_BEGIN}
 };
 
 
@@ -169,9 +169,6 @@ void hx711_callback(hx711_evt_t evt, int value)
     }
 }
 
-
-
-// ALREADY_DONE_FOR_YOU: This is a timer event handler
 static void timer_timeout_handler(void * p_context)
 {
     if(weight_changed)
@@ -360,6 +357,8 @@ static void services_init(void)
     APP_ERROR_CHECK(err_code);
 
     weight_service_init(&m_weight_service);
+    
+    hx711_init(INPUT_CH_A_128, hx711_callback);
 }
 
 
@@ -484,8 +483,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             err_code = app_timer_stop(m_weight_char_timer_id);
             APP_ERROR_CHECK(err_code);
             hx711_stop();
-            hx711_power_down();
-            
+            hx711_power_down();         
             break;
 
         case BLE_GAP_EVT_CONNECTED:
@@ -495,10 +493,12 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
-
-            //When connected; start our timer to start regular weight measurements
+            
+            hx711_wake_up();
+            /* Start continous sampling. Sampling rate is either
+            10Hz or 80 Hz, depending on hx711 HW configuration*/
             hx711_start(false);
-            err_code = app_timer_start(m_weight_char_timer_id, OUR_CHAR_TIMER_INTERVAL, NULL);
+            err_code = app_timer_start(m_weight_char_timer_id, WEIGHT_CHAR_TIMER_INTERVAL, NULL);
             APP_ERROR_CHECK(err_code);
             break;
 
@@ -760,7 +760,7 @@ static void advertising_start(bool erase_bonds)
 int main(void)
 {
     bool erase_bonds;
-
+    
     log_init();
     timers_init();
     buttons_leds_init(&erase_bonds);
@@ -768,13 +768,10 @@ int main(void)
     ble_stack_init();
     gap_params_init();
     gatt_init();
-    hx711_init(INPUT_CH_A_128, hx711_callback);
-    services_init();
+    services_init(); 
     advertising_init();
-
     conn_params_init();
     peer_manager_init();
-
     advertising_start(erase_bonds); 
 
     for (;;)

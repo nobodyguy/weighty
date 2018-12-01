@@ -29,3 +29,5 @@ void hx711_start(bool single);
 void hx711_stop();
 
 void hx711_power_down();
+
+void hx711_wake_up();

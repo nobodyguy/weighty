@@ -160,6 +160,13 @@ void hx711_power_down()
    nrf_gpio_cfg_default(DOUT);
 }
 
+void hx711_wake_up()
+{
+    nrf_gpio_cfg_output(PD_SCK);
+    nrf_gpio_pin_set(PD_SCK);
+    nrf_gpio_cfg_input(DOUT, NRF_GPIO_PIN_NOPULL);
+}
+
 void hx711_start(bool single)
 {
     
