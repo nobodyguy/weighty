@@ -1,5 +1,5 @@
 /******************************************************************************/
-/*                                                                            */
+/* @author Vidar Berg - https://devzone.nordicsemi.com/f/nordic-q-a/34112/best-approach-to-interface-hx711-with-nordic-nrf52832/131147#131147                                                                           */
 /******************************************************************************/
 
 #include <stdbool.h>
